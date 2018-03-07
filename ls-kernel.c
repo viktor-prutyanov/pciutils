@@ -302,6 +302,25 @@ show_kernel_machine(struct device *d)
     printf("Module:\t%s\n", module);
 }
 
+void
+fill_info_kernel(struct info_obj *dev_obj, struct device *d)
+{
+  char buf[DRIVER_BUF_SIZE];
+  const char *driver, *module;
+
+  if (driver = find_driver(d, buf))
+    info_obj_add_str(dev_obj, "Driver", driver);
+
+  if (!show_kernel_init())
+    return;
+
+  struct info_list *mod_list = info_list_create(INFO_VAL_STRING);
+  while (module = next_module_filtered(d))
+    info_list_add_str(mod_list, module);
+
+  info_obj_add_list(dev_obj, "Modules", mod_list);
+}
+
 #else
 
 void
@@ -316,6 +335,11 @@ show_kernel_machine(struct device *d UNUSED)
 
 void
 show_kernel_cleanup(void)
+{
+}
+
+void
+fill_info_kernel(struct info_obj *dev_obj UNUSED, struct device *d UNUSED)
 {
 }
 

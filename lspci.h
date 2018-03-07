@@ -133,6 +133,7 @@ void info_list_add_obj(struct info_list *list, struct info_obj *obj);
 void show_kernel_machine(struct device *d UNUSED);
 void show_kernel(struct device *d UNUSED);
 void show_kernel_cleanup(void);
+void fill_info_kernel(struct info_obj *dev_obj UNUSED, struct device *d UNUSED);
 
 /* ls-tree.c */
 
