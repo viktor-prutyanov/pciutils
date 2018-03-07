@@ -51,6 +51,9 @@ See below for details.
 .B -t
 Show a tree-like diagram containing all buses, bridges, devices and connections
 between them.
+.TP
+.B -J
+Use JSON output format.
 
 .SS Display options
 .TP
