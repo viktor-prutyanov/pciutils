@@ -1765,6 +1765,18 @@ cap_debug_port(int cap)
 }
 
 static void
+fill_info_cap_debug_port(struct info_obj *caps_obj, int cap)
+{
+  int bar = cap >> 13;
+  int pos = cap & 0x1fff;
+  struct info_obj *dbg_port_obj = info_obj_create_in_obj(caps_obj, "Debug port");
+  char buf[32];
+
+  info_obj_add_fmt_buf_str(dbg_port_obj, "BAR", buf, sizeof(buf), "%d", bar);
+  info_obj_add_fmt_buf_str(dbg_port_obj, "offset", buf, sizeof(buf), "%04x", pos);
+}
+
+static void
 cap_af(struct device *d, int where)
 {
   u8 reg;
@@ -2107,6 +2119,9 @@ fill_info_caps(struct info_obj *dev_obj, struct device *d, int where)
 	      break;
 	    case PCI_CAP_ID_MSI:
 	      fill_info_cap_msi(caps_obj, d, where, cap);
+	      break;
+	    case PCI_CAP_ID_DBG:
+	      fill_info_cap_debug_port(caps_obj, cap);
 	      break;
 	    default:
 	      break;
