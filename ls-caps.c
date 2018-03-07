@@ -1757,6 +1757,23 @@ cap_ssvid(struct device *d, int where)
 }
 
 static void
+fill_info_cap_ssvid(struct info_obj *caps_obj, struct device *d, int where)
+{
+  u16 subsys_v, subsys_d;
+  char ssnamebuf[256];
+  struct info_obj *ssvid_obj = info_obj_create_in_obj(caps_obj, "Subsystem");
+
+  if (!config_fetch(d, where, 8))
+    return;
+  subsys_v = get_conf_word(d, where + PCI_SSVID_VENDOR);
+  subsys_d = get_conf_word(d, where + PCI_SSVID_DEVICE);
+
+  info_obj_add_str(ssvid_obj, "Subsystem", pci_lookup_name(pacc, ssnamebuf, sizeof(ssnamebuf),
+	  PCI_LOOKUP_SUBSYSTEM | PCI_LOOKUP_VENDOR | PCI_LOOKUP_DEVICE,
+	  d->dev->vendor_id, d->dev->device_id, subsys_v, subsys_d));
+}
+
+static void
 cap_debug_port(int cap)
 {
   int bar = cap >> 13;
@@ -2122,6 +2139,9 @@ fill_info_caps(struct info_obj *dev_obj, struct device *d, int where)
 	      break;
 	    case PCI_CAP_ID_DBG:
 	      fill_info_cap_debug_port(caps_obj, cap);
+	      break;
+	    case PCI_CAP_ID_SSVID:
+	      fill_info_cap_ssvid(caps_obj, d, where);
 	      break;
 	    default:
 	      break;
