@@ -677,6 +677,63 @@ cap_msi(struct device *d, int where, int cap)
     }
 }
 
+static void
+fill_info_cap_msi(struct info_obj *caps_obj, struct device *d, int where, int cap)
+{
+  int is64;
+  u16 w;
+  char buf[64];
+  struct info_obj *msi_obj = info_obj_create_in_obj(caps_obj, "MSI");
+
+  info_obj_add_flag(msi_obj, "Enable", FLAG(cap, PCI_MSI_FLAGS_ENABLE));
+  info_obj_add_fmt_buf_str(msi_obj, "Count", buf, sizeof(buf), "%d/%d",
+		  1 << ((cap & PCI_MSI_FLAGS_QSIZE) >> 4), 1 << ((cap & PCI_MSI_FLAGS_QMASK) >> 1));
+  info_obj_add_flag(msi_obj, "Maskable", FLAG(cap, PCI_MSI_FLAGS_MASK_BIT));
+  info_obj_add_flag(msi_obj, "64bit", FLAG(cap, PCI_MSI_FLAGS_64BIT));
+  if (verbose < 2)
+    return;
+  is64 = cap & PCI_MSI_FLAGS_64BIT;
+  if (!config_fetch(d, where + PCI_MSI_ADDRESS_LO, (is64 ? PCI_MSI_DATA_64 : PCI_MSI_DATA_32) + 2 - PCI_MSI_ADDRESS_LO))
+    return;
+  if (is64)
+    {
+      u32 thigh = get_conf_long(d, where + PCI_MSI_ADDRESS_HI);
+      u32 tlow = get_conf_long(d, where + PCI_MSI_ADDRESS_LO);
+
+      info_obj_add_fmt_buf_str(msi_obj, "Address", buf, sizeof(buf), "%08x%08x", thigh, tlow);
+      w = get_conf_word(d, where + PCI_MSI_DATA_64);
+    }
+  else
+    {
+      u32 t = get_conf_long(d, where + PCI_MSI_ADDRESS_LO);
+
+      info_obj_add_fmt_buf_str(msi_obj, "Address", buf, sizeof(buf), "%08x", t);
+      w = get_conf_word(d, where + PCI_MSI_DATA_32);
+    }
+  info_obj_add_fmt_buf_str(msi_obj, "Data", buf, sizeof(buf), "%04x", w);
+  if (cap & PCI_MSI_FLAGS_MASK_BIT)
+    {
+      u32 mask, pending;
+
+      if (is64)
+	{
+	  if (!config_fetch(d, where + PCI_MSI_MASK_BIT_64, 8))
+	    return;
+	  mask = get_conf_long(d, where + PCI_MSI_MASK_BIT_64);
+	  pending = get_conf_long(d, where + PCI_MSI_PENDING_64);
+	}
+      else
+        {
+	  if (!config_fetch(d, where + PCI_MSI_MASK_BIT_32, 8))
+	    return;
+	  mask = get_conf_long(d, where + PCI_MSI_MASK_BIT_32);
+	  pending = get_conf_long(d, where + PCI_MSI_PENDING_32);
+	}
+      info_obj_add_fmt_buf_str(msi_obj, "Masking", buf, sizeof(buf), "%08x", mask);
+      info_obj_add_fmt_buf_str(msi_obj, "Pending", buf, sizeof(buf), "%08x", pending);
+    }
+}
+
 static float power_limit(int value, int scale)
 {
   static const float scales[4] = { 1.0, 0.1, 0.01, 0.001 };
@@ -2047,6 +2104,9 @@ fill_info_caps(struct info_obj *dev_obj, struct device *d, int where)
 	      break;
 	    case PCI_CAP_ID_EXP:
 	      fill_info_cap_express(caps_obj, d, where, cap);
+	      break;
+	    case PCI_CAP_ID_MSI:
+	      fill_info_cap_msi(caps_obj, d, where, cap);
 	      break;
 	    default:
 	      break;
