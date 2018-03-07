@@ -49,6 +49,48 @@ cap_pm(struct device *d, int where, int cap)
 }
 
 static void
+fill_info_cap_pm(struct info_obj *caps_obj, struct device *d, int where, int cap)
+{
+  int t, b;
+  static int pm_aux_current[8] = { 0, 55, 100, 160, 220, 270, 320, 375 };
+  struct info_obj *pm_obj, *flags_obj, *status_obj;
+  char buf[64];
+
+  pm_obj = info_obj_create_in_obj(caps_obj, "Power-Management");
+  info_obj_add_fmt_buf_str(pm_obj, "version", buf, sizeof(buf), "%d", cap & PCI_PM_CAP_VER_MASK);
+  if (verbose < 2)
+    return;
+  flags_obj = info_obj_create_in_obj(pm_obj, "Flags");
+  info_obj_add_flag(flags_obj, "PMEClk", FLAG(cap, PCI_PM_CAP_PME_CLOCK));
+  info_obj_add_flag(flags_obj, "DSI", FLAG(cap, PCI_PM_CAP_DSI));
+  info_obj_add_flag(flags_obj, "D1", FLAG(cap, PCI_PM_CAP_D1));
+  info_obj_add_flag(flags_obj, "D2", FLAG(cap, PCI_PM_CAP_D2));
+  info_obj_add_fmt_buf_str(flags_obj, "AuxCurrent", buf, sizeof(buf), "%dmA", pm_aux_current[(cap & PCI_PM_CAP_AUX_C_MASK) >> 6]);
+  info_obj_add_flag(flags_obj, "PME-D0", FLAG(cap, PCI_PM_CAP_PME_D0));
+  info_obj_add_flag(flags_obj, "PME-D1", FLAG(cap, PCI_PM_CAP_PME_D1));
+  info_obj_add_flag(flags_obj, "PME-D2", FLAG(cap, PCI_PM_CAP_PME_D2));
+  info_obj_add_flag(flags_obj, "PME-D3hot", FLAG(cap, PCI_PM_CAP_PME_D3_HOT));
+  info_obj_add_flag(flags_obj, "PME-D3cold", FLAG(cap, PCI_PM_CAP_PME_D3_COLD));
+  if (!config_fetch(d, where + PCI_PM_CTRL, PCI_PM_SIZEOF - PCI_PM_CTRL))
+    return;
+  t = get_conf_word(d, where + PCI_PM_CTRL);
+  status_obj = info_obj_create_in_obj(pm_obj, "Status");
+  info_obj_add_fmt_buf_str(status_obj, "D", buf, sizeof(buf), "%d", t & PCI_PM_CTRL_STATE_MASK);
+  info_obj_add_flag(status_obj, "NoSoftRst", FLAG(t, PCI_PM_CTRL_NO_SOFT_RST));
+  info_obj_add_flag(status_obj, "PME-Enable", FLAG(t, PCI_PM_CTRL_PME_ENABLE));
+  info_obj_add_fmt_buf_str(status_obj, "DSel", buf, sizeof(buf), "%d", (t & PCI_PM_CTRL_DATA_SEL_MASK) >> 9);
+  info_obj_add_fmt_buf_str(status_obj, "DScale", buf, sizeof(buf), "%d", (t & PCI_PM_CTRL_DATA_SCALE_MASK) >> 13);
+  info_obj_add_flag(status_obj, "PME", FLAG(t, PCI_PM_CTRL_PME_STATUS));
+  b = get_conf_byte(d, where + PCI_PM_PPB_EXTENSIONS);
+  if (b)
+    {
+      struct info_obj *bridge_obj = info_obj_create_in_obj(pm_obj, "Bridge");
+      info_obj_add_flag(bridge_obj, "PM", FLAG(t, PCI_PM_BPCC_ENABLE));
+      info_obj_add_flag(bridge_obj, "B3", FLAG(~t, PCI_PM_PPB_B2_B3));
+    }
+}
+
+static void
 format_agp_rate(int rate, char *buf, int agp3)
 {
   char *c = buf;
@@ -2000,6 +2042,9 @@ fill_info_caps(struct info_obj *dev_obj, struct device *d, int where)
 	    }
 	  switch (id)
 	    {
+	    case PCI_CAP_ID_PM:
+	      fill_info_cap_pm(caps_obj, d, where, cap);
+	      break;
 	    case PCI_CAP_ID_EXP:
 	      fill_info_cap_express(caps_obj, d, where, cap);
 	      break;
