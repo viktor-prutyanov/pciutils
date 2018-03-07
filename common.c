@@ -45,7 +45,7 @@ xrealloc(void *ptr, unsigned int howmuch)
 }
 
 char *
-xstrdup(char *str)
+xstrdup(const char *str)
 {
   int len = strlen(str) + 1;
   char *copy = xmalloc(len);
