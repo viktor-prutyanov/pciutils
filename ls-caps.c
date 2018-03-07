@@ -1812,6 +1812,30 @@ cap_af(struct device *d, int where)
 }
 
 static void
+fill_info_cap_af(struct info_obj *caps_obj, struct device *d, int where)
+{
+  u8 reg;
+  struct info_obj *af_obj = info_obj_create_in_obj(caps_obj, "PCI-Advanced-Features");
+  struct info_obj *af_cap_obj, *af_ctrl_obj, *af_stat_obj;
+
+  if (verbose < 2 || !config_fetch(d, where + PCI_AF_CAP, 3))
+    return;
+
+  reg = get_conf_byte(d, where + PCI_AF_CAP);
+  af_cap_obj = info_obj_create_in_obj(af_obj, "AFCap");
+  info_obj_add_flag(af_cap_obj, "TP", FLAG(reg, PCI_AF_CAP_TP));
+  info_obj_add_flag(af_cap_obj, "FLR", FLAG(reg, PCI_AF_CAP_FLR));
+
+  reg = get_conf_byte(d, where + PCI_AF_CTRL);
+  af_ctrl_obj = info_obj_create_in_obj(af_obj, "AFCtrl");
+  info_obj_add_flag(af_ctrl_obj, "FLR", FLAG(reg, PCI_AF_CTRL_FLR));
+
+  reg = get_conf_byte(d, where + PCI_AF_STATUS);
+  af_stat_obj = info_obj_create_in_obj(af_obj, "AFStatus");
+  info_obj_add_flag(af_stat_obj, "TP", FLAG(reg, PCI_AF_STATUS_TP));
+}
+
+static void
 cap_sata_hba(struct device *d, int where, int cap)
 {
   u32 bars;
@@ -2142,6 +2166,9 @@ fill_info_caps(struct info_obj *dev_obj, struct device *d, int where)
 	      break;
 	    case PCI_CAP_ID_SSVID:
 	      fill_info_cap_ssvid(caps_obj, d, where);
+	      break;
+	    case PCI_CAP_ID_AF:
+	      fill_info_cap_af(caps_obj, d, where);
 	      break;
 	    default:
 	      break;
