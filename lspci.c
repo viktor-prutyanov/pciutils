@@ -1250,6 +1250,7 @@ fill_info_htype0(struct info_obj *dev_obj, struct device *d)
 
   fill_info_bases(htype0_obj, d, 6);
   fill_info_rom(htype0_obj, d, PCI_ROM_ADDRESS);
+  fill_info_caps(dev_obj, d, PCI_CAPABILITY_LIST);
 }
 
 static void
@@ -1359,6 +1360,8 @@ fill_info_htype1(struct info_obj *dev_obj, struct device *d)
       info_obj_add_flag(bridgectl_obj, "DiscTmrStat", FLAG(brc, PCI_BRIDGE_CTL_DISCARD_TIMER_STATUS));
       info_obj_add_flag(bridgectl_obj, "DiscTmrSERREn", FLAG(brc, PCI_BRIDGE_CTL_DISCARD_TIMER_SERR_EN));
     }
+
+  fill_info_caps(dev_obj, d, PCI_CAPABILITY_LIST);
 }
 
 static void
@@ -1446,6 +1449,8 @@ fill_info_htype2(struct info_obj *dev_obj, struct device *d)
   exca = get_conf_word(d, PCI_CB_LEGACY_MODE_BASE);
   if (exca)
     info_obj_add_fmt_buf_str(htype2_obj, "exca", buf, sizeof(buf), "%04x", exca);
+
+  fill_info_caps(dev_obj, d, PCI_CB_CAPABILITY_LIST);
 }
 
 static void

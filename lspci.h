@@ -58,22 +58,6 @@ void get_subid(struct device *d, word *subvp, word *subdp);
 #define BITS(x,at,width) (((x) >> (at)) & ((1 << (width)) - 1))
 #define TABLE(tab,x,buf) ((x) < sizeof(tab)/sizeof((tab)[0]) ? (tab)[x] : (sprintf((buf), "??%d", (x)), (buf)))
 
-/* ls-vpd.c */
-
-void cap_vpd(struct device *d);
-
-/* ls-caps.c */
-
-void show_caps(struct device *d, int where);
-
-/* ls-ecaps.c */
-
-void show_ext_caps(struct device *d, int type);
-
-/* ls-caps-vendor.c */
-
-void show_vendor_caps(struct device *d, int where, int cap);
-
 /* ls-info.c */
 
 enum info_val_type {
@@ -127,6 +111,23 @@ struct info_list *info_list_create(enum info_val_type type);
 struct info_list *info_list_create_in_obj(struct info_obj *parent_obj, char *key, enum info_val_type type);
 void info_list_add_str(struct info_list *list, const char *str);
 void info_list_add_obj(struct info_list *list, struct info_obj *obj);
+
+/* ls-vpd.c */
+
+void cap_vpd(struct device *d);
+
+/* ls-caps.c */
+
+void show_caps(struct device *d, int where);
+void fill_info_caps(struct info_obj *dev_obj, struct device *d, int where);
+
+/* ls-ecaps.c */
+
+void show_ext_caps(struct device *d, int type);
+
+/* ls-caps-vendor.c */
+
+void show_vendor_caps(struct device *d, int where, int cap);
 
 /* ls-kernel.c */
 
