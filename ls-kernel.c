@@ -268,20 +268,32 @@ next_module_filtered(struct device *d)
 }
 
 void
-show_kernel(struct device *d)
+fill_info_kernel(struct device *d)
 {
   char buf[DRIVER_BUF_SIZE];
   const char *driver, *module;
 
   if (driver = find_driver(d, buf))
-    printf("\tKernel driver in use: %s\n", driver);
+    info_obj_add_str(d->obj, "Driver", driver);
 
   if (!show_kernel_init())
     return;
 
-  int cnt = 0;
+  struct info_list *mod_list = info_list_create_in_obj(d->obj, "Modules", INFO_VAL_STRING);
   while (module = next_module_filtered(d))
-    printf("%s %s", (cnt++ ? "," : "\tKernel modules:"), module);
+    info_list_add_str(mod_list, module);
+}
+
+void
+show_kernel(struct device *d)
+{
+  info_obj_print_str("%0.s\t%s: %s\n", d->obj, "Driver", "Kernel driver in use");
+
+  int cnt = 0;
+  INFO_LIST_FOREACH(node, info_obj_find_pair(d->obj, "Modules")->val.list)
+    {
+      printf("%s %s", (cnt++ ? "," : "\tKernel modules:"), node->val.str);
+    }
   if (cnt)
     putchar('\n');
 }
@@ -289,36 +301,12 @@ show_kernel(struct device *d)
 void
 show_kernel_machine(struct device *d)
 {
-  char buf[DRIVER_BUF_SIZE];
-  const char *driver, *module;
+  info_obj_print_str("%s%0.s:\t%s\n", d->obj, "Driver", NULL);
 
-  if (driver = find_driver(d, buf))
-    printf("Driver:\t%s\n", driver);
-
-  if (!show_kernel_init())
-    return;
-
-  while (module = next_module_filtered(d))
-    printf("Module:\t%s\n", module);
-}
-
-void
-fill_info_kernel(struct info_obj *dev_obj, struct device *d)
-{
-  char buf[DRIVER_BUF_SIZE];
-  const char *driver, *module;
-
-  if (driver = find_driver(d, buf))
-    info_obj_add_str(dev_obj, "Driver", driver);
-
-  if (!show_kernel_init())
-    return;
-
-  struct info_list *mod_list = info_list_create(INFO_VAL_STRING);
-  while (module = next_module_filtered(d))
-    info_list_add_str(mod_list, module);
-
-  info_obj_add_list(dev_obj, "Modules", mod_list);
+  INFO_LIST_FOREACH(node, info_obj_find_pair(d->obj, "Modules")->val.list)
+    {
+      printf("Module:\t%s\n", node->val.str);
+    }
 }
 
 #else
@@ -339,7 +327,7 @@ show_kernel_cleanup(void)
 }
 
 void
-fill_info_kernel(struct info_obj *dev_obj UNUSED, struct device *d UNUSED)
+fill_info_kernel(struct device *d UNUSED)
 {
 }
 

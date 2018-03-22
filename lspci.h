@@ -37,6 +37,7 @@ struct device {
   unsigned int config_cached, config_bufsize;
   byte *config;				/* Cached configuration space data */
   byte *present;			/* Maps which configuration bytes are present */
+  struct info_obj *obj;
 };
 
 extern struct device *first_dev;
@@ -57,22 +58,6 @@ void get_subid(struct device *d, word *subvp, word *subdp);
 #define FLAG(x,y) ((x & y) ? '+' : '-')
 #define BITS(x,at,width) (((x) >> (at)) & ((1 << (width)) - 1))
 #define TABLE(tab,x,buf) ((x) < sizeof(tab)/sizeof((tab)[0]) ? (tab)[x] : (sprintf((buf), "??%d", (x)), (buf)))
-
-/* ls-vpd.c */
-
-void cap_vpd(struct device *d);
-
-/* ls-caps.c */
-
-void show_caps(struct device *d, int where);
-
-/* ls-ecaps.c */
-
-void show_ext_caps(struct device *d, int type);
-
-/* ls-caps-vendor.c */
-
-void show_vendor_caps(struct device *d, int where, int cap);
 
 /* ls-info.c */
 
@@ -122,18 +107,45 @@ void info_obj_add_fmt_buf_str(struct info_obj *obj, const char *key, char *buf, 
 void info_obj_print_json(struct info_obj *obj, int ind_lvl);
 void info_obj_delete_pair(struct info_obj *obj, char *key);
 void info_obj_delete(struct info_obj *obj);
+struct info_pair *info_obj_find_pair(struct info_obj *obj, const char *key);
+void info_obj_print_str(const char *fmt, struct info_obj *obj, const char *k, const char *name);
+void info_obj_print_str_only(const char *fmt, struct info_obj *obj, const char *k);
+
+#define INFO_OBJ_CREATE(obj) struct info_obj *obj = info_obj_create()
+#define INFO_OBJ_DELETE(obj) info_obj_delete(obj)
 
 struct info_list *info_list_create(enum info_val_type type);
 struct info_list *info_list_create_in_obj(struct info_obj *parent_obj, char *key, enum info_val_type type);
 void info_list_add_str(struct info_list *list, const char *str);
 void info_list_add_obj(struct info_list *list, struct info_obj *obj);
 
+#define INFO_LIST_FOREACH(list_node, list)\
+  struct info_list_node *list_node;\
+  for (list_node = list->node; list_node; list_node = list_node->next)
+
+/* ls-vpd.c */
+
+void cap_vpd(struct device *d);
+
+/* ls-caps.c */
+
+void show_caps(struct device *d, int where);
+void fill_info_caps(struct info_obj *dev_obj, struct device *d, int where);
+
+/* ls-ecaps.c */
+
+void show_ext_caps(struct device *d, int type);
+
+/* ls-caps-vendor.c */
+
+void show_vendor_caps(struct device *d, int where, int cap);
+
 /* ls-kernel.c */
 
 void show_kernel_machine(struct device *d UNUSED);
-void show_kernel(struct device *d UNUSED);
+void show_kernel(struct device *obj UNUSED);
 void show_kernel_cleanup(void);
-void fill_info_kernel(struct info_obj *dev_obj UNUSED, struct device *d UNUSED);
+void fill_info_kernel(struct device *d UNUSED);
 
 /* ls-tree.c */
 

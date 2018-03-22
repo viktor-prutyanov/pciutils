@@ -927,60 +927,31 @@ print_shell_escaped(char *c)
 static void
 show_machine(struct device *d)
 {
-  struct pci_dev *p = d->dev;
-  int c;
-  word sv_id, sd_id;
-  char classbuf[128], vendbuf[128], devbuf[128], svbuf[128], sdbuf[128];
-
-  get_subid(d, &sv_id, &sd_id);
-
   if (verbose)
     {
-      pci_fill_info(p, PCI_FILL_PHYS_SLOT | PCI_FILL_NUMA_NODE);
-      printf((opt_machine >= 2) ? "Slot:\t" : "Device:\t");
-      show_slot_name(d);
-      putchar('\n');
-      printf("Class:\t%s\n",
-	     pci_lookup_name(pacc, classbuf, sizeof(classbuf), PCI_LOOKUP_CLASS, p->device_class));
-      printf("Vendor:\t%s\n",
-	     pci_lookup_name(pacc, vendbuf, sizeof(vendbuf), PCI_LOOKUP_VENDOR, p->vendor_id, p->device_id));
-      printf("Device:\t%s\n",
-	     pci_lookup_name(pacc, devbuf, sizeof(devbuf), PCI_LOOKUP_DEVICE, p->vendor_id, p->device_id));
-      if (sv_id && sv_id != 0xffff)
-	{
-	  printf("SVendor:\t%s\n",
-		 pci_lookup_name(pacc, svbuf, sizeof(svbuf), PCI_LOOKUP_SUBSYSTEM | PCI_LOOKUP_VENDOR, sv_id));
-	  printf("SDevice:\t%s\n",
-		 pci_lookup_name(pacc, sdbuf, sizeof(sdbuf), PCI_LOOKUP_SUBSYSTEM | PCI_LOOKUP_DEVICE, p->vendor_id, p->device_id, sv_id, sd_id));
-	}
-      if (p->phy_slot)
-	printf("PhySlot:\t%s\n", p->phy_slot);
-      if (c = get_conf_byte(d, PCI_REVISION_ID))
-	printf("Rev:\t%02x\n", c);
-      if (c = get_conf_byte(d, PCI_CLASS_PROG))
-	printf("ProgIf:\t%02x\n", c);
+      info_obj_print_str("%.0s%s:\t%s\n", d->obj, "Slot", (opt_machine > 1) ? "Slot" : "Device");
+      info_obj_print_str("%s%.0s:\t%s\n", d->obj, "Class", NULL);
+      info_obj_print_str("%s%.0s:\t%s\n", d->obj, "Vendor", NULL);
+      info_obj_print_str("%s%.0s:\t%s\n", d->obj, "Device", NULL);
+      info_obj_print_str("%s%.0s:\t%s\n", d->obj, "SVendor", NULL);
+      info_obj_print_str("%s%.0s:\t%s\n", d->obj, "SDevice", NULL);
+      info_obj_print_str("%s%.0s:\t%s\n", d->obj, "PhySlot", NULL);
+      info_obj_print_str("%s%.0s:\t%s\n", d->obj, "Rev", NULL);
+      info_obj_print_str("%s%.0s:\t%s\n", d->obj, "ProgIf", NULL);
       if (opt_kernel)
 	show_kernel_machine(d);
-      if (p->numa_node != -1)
-	printf("NUMANode:\t%d\n", p->numa_node);
+      info_obj_print_str("%s%0.s:\t%s\n", d->obj, "NUMANode", NULL);
     }
   else
     {
-      show_slot_name(d);
-      print_shell_escaped(pci_lookup_name(pacc, classbuf, sizeof(classbuf), PCI_LOOKUP_CLASS, p->device_class));
-      print_shell_escaped(pci_lookup_name(pacc, vendbuf, sizeof(vendbuf), PCI_LOOKUP_VENDOR, p->vendor_id, p->device_id));
-      print_shell_escaped(pci_lookup_name(pacc, devbuf, sizeof(devbuf), PCI_LOOKUP_DEVICE, p->vendor_id, p->device_id));
-      if (c = get_conf_byte(d, PCI_REVISION_ID))
-	printf(" -r%02x", c);
-      if (c = get_conf_byte(d, PCI_CLASS_PROG))
-	printf(" -p%02x", c);
-      if (sv_id && sv_id != 0xffff)
-	{
-	  print_shell_escaped(pci_lookup_name(pacc, svbuf, sizeof(svbuf), PCI_LOOKUP_SUBSYSTEM | PCI_LOOKUP_VENDOR, sv_id));
-	  print_shell_escaped(pci_lookup_name(pacc, sdbuf, sizeof(sdbuf), PCI_LOOKUP_SUBSYSTEM | PCI_LOOKUP_DEVICE, p->vendor_id, p->device_id, sv_id, sd_id));
-	}
-      else
-	printf(" \"\" \"\"");
+      info_obj_print_str_only("%s",      d->obj, "Slot");
+      info_obj_print_str_only(" \"%s\"", d->obj, "Class");
+      info_obj_print_str_only(" \"%s\"", d->obj, "Vendor");
+      info_obj_print_str_only(" \"%s\"", d->obj, "Device");
+      info_obj_print_str_only(" -r%s",   d->obj, "Rev");
+      info_obj_print_str_only(" -p%s",   d->obj, "ProgIf");
+      info_obj_print_str_only(" \"%s\"", d->obj, "SVendor");
+      info_obj_print_str_only(" \"%s\"", d->obj, "SDevice");
       putchar('\n');
     }
 }
@@ -1008,12 +979,23 @@ show_device(struct device *d)
 }
 
 static void
+fill_info(struct info_obj *root);
+
+static void
 show(void)
 {
   struct device *d;
+  struct info_obj *root = info_obj_create();
 
-  for (d=first_dev; d; d=d->next)
-    show_device(d);
+  fill_info(root);
+
+  if (opt_json)
+    info_obj_print_json(root, 0);
+  else
+    for (d=first_dev; d; d=d->next)
+      show_device(d);
+
+  info_obj_delete(root);
 }
 
 static void
@@ -1061,7 +1043,7 @@ fill_info_machine(struct info_obj *dev_obj, struct device *d)
     }
 
   if (opt_kernel)
-     fill_info_kernel(dev_obj, d);
+     fill_info_kernel(d);
 
   if (verbose)
     {
@@ -1598,47 +1580,35 @@ fill_info_verbose(struct info_obj *dev_obj, struct device *d)
 }
 
 static void
-fill_info_device(struct info_obj *dev_obj, struct device *d)
+fill_info_device(struct device *d)
 {
   if (opt_machine)
-    fill_info_machine(dev_obj, d);
+    fill_info_machine(d->obj, d);
   else
     {
       if (verbose)
-	fill_info_verbose(dev_obj, d);
+	fill_info_verbose(d->obj, d);
       else
-	fill_info_terse(dev_obj, d);
+	fill_info_terse(d->obj, d);
       if (!opt_kernel && verbose)
-	fill_info_kernel(dev_obj, d);
+	fill_info_kernel(d);
     }
   if (opt_hex)
-    fill_info_hex_dump(dev_obj, d);
+    fill_info_hex_dump(d->obj, d);
 }
 
 static void
 fill_info(struct info_obj *root)
 {
   struct device *d;
-  struct info_list *dev_list = info_list_create(INFO_VAL_OBJECT);
+  struct info_list *dev_list = info_list_create_in_obj(root, "pcidevices", INFO_VAL_OBJECT);
 
   for (d=first_dev; d; d=d->next)
     {
-      struct info_obj *dev_obj = info_obj_create();
-      fill_info_device(dev_obj, d);
-      info_list_add_obj(dev_list, dev_obj);
+      d->obj = info_obj_create();
+      fill_info_device(d);
+      info_list_add_obj(dev_list, d->obj);
     }
-
-  info_obj_add_list(root, "pcidevices", dev_list);
-}
-
-static void
-show_json(void)
-{
-  struct info_obj *root = info_obj_create();
-
-  fill_info(root);
-  info_obj_print_json(root, 0);
-  info_obj_delete(root);
 }
 
 /* Main */
@@ -1748,8 +1718,6 @@ main(int argc, char **argv)
       sort_them();
       if (opt_tree)
 	show_forest();
-      else if (opt_json)
-	show_json();
       else
 	show();
     }

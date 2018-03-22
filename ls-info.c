@@ -13,6 +13,35 @@
 
 #include "lspci.h"
 
+struct info_pair *info_obj_find_pair(struct info_obj *obj, const char *key)
+{
+  struct info_pair *pair;
+
+  for (pair = obj->pair; pair; pair = pair->next)
+    {
+      if (!strcmp(pair->key, key))
+	return pair;
+    }
+
+  return NULL;
+}
+
+void info_obj_print_str(const char *fmt, struct info_obj *obj, const char *k, const char *name)
+{
+  struct info_pair *pair = info_obj_find_pair(obj, k);
+
+  if (pair && (pair->type == INFO_VAL_STRING))
+    printf(fmt, k, name, pair->val.str);
+}
+
+void info_obj_print_str_only(const char *fmt, struct info_obj *obj, const char *k)
+{
+  struct info_pair *pair = info_obj_find_pair(obj, k);
+
+  if (pair && (pair->type == INFO_VAL_STRING))
+    printf(fmt, pair->val.str);
+}
+
 struct info_list *
 info_list_create(enum info_val_type type)
 {
