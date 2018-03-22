@@ -250,16 +250,6 @@ sort_them(void)
 /*** Normal output ***/
 
 static void
-show_slot_name(struct device *d)
-{
-  struct pci_dev *p = d->dev;
-
-  if (!opt_machine ? opt_domains : (p->domain || opt_domains >= 2))
-    printf("%04x:", p->domain);
-  printf("%02x:%02x.%d", p->bus, p->dev, p->func);
-}
-
-static void
 fill_slot_name(struct device *d, char *buf, size_t size)
 {
   struct pci_dev *p = d->dev;
@@ -291,52 +281,20 @@ get_subid(struct device *d, word *subvp, word *subdp)
 static void
 show_terse(struct device *d)
 {
-  int c;
-  struct pci_dev *p = d->dev;
-  char classbuf[128], devbuf[128];
-
-  show_slot_name(d);
-  printf(" %s: %s",
-	 pci_lookup_name(pacc, classbuf, sizeof(classbuf),
-			 PCI_LOOKUP_CLASS,
-			 p->device_class),
-	 pci_lookup_name(pacc, devbuf, sizeof(devbuf),
-			 PCI_LOOKUP_VENDOR | PCI_LOOKUP_DEVICE,
-			 p->vendor_id, p->device_id));
-  if (c = get_conf_byte(d, PCI_REVISION_ID))
-    printf(" (rev %02x)", c);
+  info_obj_print_str_only("%s", d->obj, "Slot");
+  info_obj_print_str_only(" %s:", d->obj, "Class");
+  info_obj_print_str_only(" %s", d->obj, "Vendor");
+  info_obj_print_str_only(" %s", d->obj, "Device");
+  info_obj_print_str_only(" (rev %s)", d->obj, "Rev");
   if (verbose)
-    {
-      char *x;
-      c = get_conf_byte(d, PCI_CLASS_PROG);
-      x = pci_lookup_name(pacc, devbuf, sizeof(devbuf),
-			  PCI_LOOKUP_PROGIF | PCI_LOOKUP_NO_NUMBERS,
-			  p->device_class, c);
-      if (c || x)
-	{
-	  printf(" (prog-if %02x", c);
-	  if (x)
-	    printf(" [%s]", x);
-	  putchar(')');
-	}
-    }
+    info_obj_print_str_only(" (prog-if %s)", d->obj, "ProgIf");
   putchar('\n');
 
   if (verbose || opt_kernel)
     {
-      word subsys_v, subsys_d;
-      char ssnamebuf[256];
-
-      pci_fill_info(p, PCI_FILL_LABEL);
-
-      if (p->label)
-        printf("\tDeviceName: %s", p->label);
-      get_subid(d, &subsys_v, &subsys_d);
-      if (subsys_v && subsys_v != 0xffff)
-	printf("\tSubsystem: %s\n",
-		pci_lookup_name(pacc, ssnamebuf, sizeof(ssnamebuf),
-			PCI_LOOKUP_SUBSYSTEM | PCI_LOOKUP_VENDOR | PCI_LOOKUP_DEVICE,
-			p->vendor_id, p->device_id, subsys_v, subsys_d));
+      info_obj_print_str("\t%s%0.s: %s", d->obj, "DeviceName", NULL);
+      info_obj_print_str("\t%0.s%s: %s", d->obj, "SVendor", "Subsystem");
+      info_obj_print_str_only(" %s\n", d->obj, "SDevice");
     }
 }
 
@@ -999,7 +957,7 @@ show(void)
 }
 
 static void
-fill_info_machine(struct info_obj *dev_obj, struct device *d)
+fill_info_machine(struct device *d)
 {
   struct pci_dev *p = d->dev;
   int c;
@@ -1009,37 +967,37 @@ fill_info_machine(struct info_obj *dev_obj, struct device *d)
   get_subid(d, &sv_id, &sd_id);
 
   fill_slot_name(d, buf, sizeof(buf));
-  info_obj_add_str(dev_obj, "Slot", buf);
+  info_obj_add_str(d->obj, "Slot", buf);
 
   pci_lookup_name(pacc, buf, sizeof(buf), PCI_LOOKUP_CLASS, p->device_class);
-  info_obj_add_str(dev_obj, "Class", buf);
+  info_obj_add_str(d->obj, "Class", buf);
   pci_lookup_name(pacc, buf, sizeof(buf), PCI_LOOKUP_VENDOR, p->vendor_id, p->device_id);
-  info_obj_add_str(dev_obj, "Vendor", buf);
+  info_obj_add_str(d->obj, "Vendor", buf);
   pci_lookup_name(pacc, buf, sizeof(buf), PCI_LOOKUP_DEVICE, p->vendor_id, p->device_id);
-  info_obj_add_str(dev_obj, "Device", buf);
+  info_obj_add_str(d->obj, "Device", buf);
 
   if (sv_id && sv_id != 0xffff)
     {
       pci_lookup_name(pacc, buf, sizeof(buf), PCI_LOOKUP_SUBSYSTEM | PCI_LOOKUP_VENDOR, sv_id);
-      info_obj_add_str(dev_obj, "SVendor", buf);
+      info_obj_add_str(d->obj, "SVendor", buf);
       pci_lookup_name(pacc, buf, sizeof(buf), PCI_LOOKUP_SUBSYSTEM | PCI_LOOKUP_DEVICE, p->vendor_id, p->device_id, sv_id, sd_id);
-      info_obj_add_str(dev_obj, "SDevice", buf);
+      info_obj_add_str(d->obj, "SDevice", buf);
     }
-  else if (!verbose)
+  else if (!verbose && opt_machine)
     {
-      info_obj_add_str(dev_obj, "SVendor", "");
-      info_obj_add_str(dev_obj, "SDevice", "");
+      info_obj_add_str(d->obj, "SVendor", "");
+      info_obj_add_str(d->obj, "SDevice", "");
     }
 
   if (c = get_conf_byte(d, PCI_REVISION_ID))
     {
       snprintf(buf, sizeof(buf), "%02x", c);
-      info_obj_add_str(dev_obj, "Rev", buf);
+      info_obj_add_str(d->obj, "Rev", buf);
     }
   if (c = get_conf_byte(d, PCI_CLASS_PROG))
     {
       snprintf(buf, sizeof(buf), "%02x", c);
-      info_obj_add_str(dev_obj, "ProgIf", buf);
+      info_obj_add_str(d->obj, "ProgIf", buf);
     }
 
   if (opt_kernel)
@@ -1049,37 +1007,27 @@ fill_info_machine(struct info_obj *dev_obj, struct device *d)
     {
       pci_fill_info(p, PCI_FILL_PHYS_SLOT | PCI_FILL_NUMA_NODE);
       if (p->phy_slot)
-	info_obj_add_str(dev_obj, "PhySlot", p->phy_slot);
+	info_obj_add_str(d->obj, "PhySlot", p->phy_slot);
       if (p->numa_node != -1)
 	{
 	  snprintf(buf, sizeof(buf), "%d", p->numa_node);
-	  info_obj_add_str(dev_obj, "NUMAnode", buf);
+	  info_obj_add_str(d->obj, "NUMAnode", buf);
 	}
     }
 }
 
 static void
-fill_info_terse(struct info_obj *dev_obj, struct device *d)
+fill_info_terse(struct device *d)
 {
-  struct pci_dev *p = d->dev;
-
-  fill_info_machine(dev_obj, d);
+  fill_info_machine(d);
 
   if (verbose || opt_kernel)
     {
-      word subsys_v, subsys_d;
-      char ssnamebuf[256];
+      struct pci_dev *p = d->dev;
 
+      pci_fill_info(p, PCI_FILL_LABEL);
       if (p->label)
-	info_obj_add_str(dev_obj, "DeviceName", p->label);
-      info_obj_delete_pair(dev_obj, "SDevice");
-      info_obj_delete_pair(dev_obj, "SVendor");
-      get_subid(d, &subsys_v, &subsys_d);
-      if (subsys_v && subsys_v != 0xffff)
-	info_obj_add_str(dev_obj, "Subsystem",
-		pci_lookup_name(pacc, ssnamebuf, sizeof(ssnamebuf),
-			PCI_LOOKUP_SUBSYSTEM | PCI_LOOKUP_VENDOR | PCI_LOOKUP_DEVICE,
-			p->vendor_id, p->device_id, subsys_v, subsys_d));
+	info_obj_add_str(d->obj, "DeviceName", p->label);
     }
 }
 
@@ -1447,9 +1395,9 @@ fill_info_verbose(struct info_obj *dev_obj, struct device *d)
   byte int_pin = get_conf_byte(d, PCI_INTERRUPT_PIN);
   unsigned int irq;
 
-  fill_info_terse(dev_obj, d);
+  fill_info_terse(d);
   pci_fill_info(p, PCI_FILL_IRQ | PCI_FILL_BASES | PCI_FILL_ROM_BASE | PCI_FILL_SIZES |
-    PCI_FILL_PHYS_SLOT | PCI_FILL_LABEL | PCI_FILL_NUMA_NODE);
+    PCI_FILL_PHYS_SLOT | PCI_FILL_NUMA_NODE);
   irq = p->irq;
 
   switch (htype)
@@ -1583,13 +1531,13 @@ static void
 fill_info_device(struct device *d)
 {
   if (opt_machine)
-    fill_info_machine(d->obj, d);
+    fill_info_machine(d);
   else
     {
       if (verbose)
 	fill_info_verbose(d->obj, d);
       else
-	fill_info_terse(d->obj, d);
+	fill_info_terse(d);
       if (!opt_kernel && verbose)
 	fill_info_kernel(d);
     }
